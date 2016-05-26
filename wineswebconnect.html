@@ -1,0 +1,146 @@
+<html>
+<meta http-equiv="Cache-Control" content="no-store" />
+
+<head>
+    <title>Wines Web Data Connector</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js" type="text/javascript"></script>
+    <script src="https://connectors.tableau.com/libs/tableauwdc-1.1.1.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        (function() {
+            var APIKEY = "17966ce80f5dfd947044d9da42e614d5";
+            //
+            // Helper functions
+            //
+
+            // Takes a ticker symbol, a start date and an end date, and constructs a URL for the Yahoo! stock quote API
+            function buildUrl(lastRecordNumber) {
+                var url = "http://services.wine.com/api/beta2/service.svc/json/catalog?sort=rating|descending&size=100&apikey=" + APIKEY + "&offset=" + lastRecordNumber;
+                return url;
+            }
+
+            //
+            // Connector definition
+            // 
+
+            var myConnector = tableau.makeConnector();
+
+            myConnector.getColumnHeaders = function() {
+                var fieldNames = ["Id", "Name", "Url", "Appellation.Id", "Appellation.Name", "Appellation.Url", "Appellation.Region.Id", "Appellation.Region.Name", "Appellation.Region.Url", "Appellation.Region.Area", "Labels.Id", "Labels.Name", "Labels.Url", "Type", "Varietal.Id", "Varietal.Name", "Varietal.Url", "Varietal.WineType.Id", "Varietal.WineType.Name", "Varietal.WineType.Url", "Vineyard.Id", "Vineyard.Name", "Vineyard.Url", "Vineyard.ImageUrl", "Vineyard.GeoLocation.Latitude", "Vineyard.GeoLocation.Longitude", "Vineyard.GeoLocation.Url", "Vintage", "Community.Reviews.HighestScore", "Community.Reviews.Url", "Community.Url", "Description", "GeoLocation.Latitude", "GeoLocation.Longitude", "GeoLocation.Url", "PriceMax", "PriceMin", "PriceRetail", "ProductAttributes.Id", "ProductAttributes.Name", "ProductAttributes.Url", "ProductAttributes.ImageUrl", "Ratings.HighestScore", "Retail"];
+                var fieldTypes = ["int", "string", "string", "int", "string", "string", "int", "string", "string", "string", "string", "string", "string", "string", "int", "string", "string", "int", "string", "string", "int", "string", "string", "string", "float", "float", "string", "string", "string", "string", "string", "string", "string", "float", "float", "float", "float", "float", "int", "string", "string", "string", "float", "string"];
+                tableau.headersCallback(fieldNames, fieldTypes); // tell tableau about the fields and their types
+            };
+
+            myConnector.getTableData = function(lastRecordToken) {
+                if (lastRecordToken) {
+
+                    //test line to stop after one iteration
+                    //tableau.dataCallback([], lastRecordToken, false);
+                    //return;
+
+                    lastRecordNumber = parseInt(lastRecordToken);
+
+                    //if MAX_RECORD reached or no more results to retrieve then return to Tableau with no data
+                    if (lastRecordNumber >= 1000) {
+                        tableau.dataCallback([], '', false);
+                        return;
+                    }
+                } else {
+                    //Set initial query string
+                    lastRecordNumber = 0;
+                }
+
+                var connectionUrl = buildUrl(lastRecordNumber);
+                var xhr = $.ajax({
+                    url: connectionUrl,
+                    dataType: 'json',
+                    success: function(data) {
+                        tableau.log(data);
+                        if (data.Products.List) {
+                            var products = data.Products.List;
+                            var ii;
+                            var toRet = [];
+                            // mash the data into an array of objects
+                            for (ii = 0; ii < products.length; ++ii) {
+                                // Each entry can be a list of values in the same order as the columns
+                                //var entry = [quotes[ii].Symbol, quotes[ii].Date, quotes[ii].Close];
+                                // or an object where the column names are the keys of the map
+                                var entry = {
+                                    "Id": products[ii].Id,
+                                    "Name": products[ii].Name,
+                                    "Url": products[ii].Url,
+                                    "Appellation.Id": products[ii].Appellation.Id,
+                                    "Appellation.Name": products[ii].Appellation.Name,
+                                    "Appellation.Url": products[ii].Appellation.Url,
+                                    "Appellation.Region.Id": products[ii].Appellation.Region.Id,
+                                    "Appellation.Region.Name": products[ii].Appellation.Region.Name,
+                                    "Appellation.Region.Url": products[ii].Appellation.Region.Url,
+                                    "Appellation.Region.Area": products[ii].Appellation.Region.Area,
+                                    "Labels.Id": products[ii].Labels[0].Id,
+                                    "Labels.Name": products[ii].Labels[0].Name,
+                                    "Labels.Url": products[ii].Labels[0].Url,
+                                    "Type": products[ii].Type,
+                                    "Varietal.Id": products[ii].Varietal.Id,
+                                    "Varietal.Name": products[ii].Varietal.Name,
+                                    "Varietal.Url": products[ii].Varietal.Url,
+                                    "Varietal.WineType.Id": products[ii].Varietal.WineType.Id,
+                                    "Varietal.WineType.Name": products[ii].Varietal.WineType.Name,
+                                    "Varietal.WineType.Url": products[ii].Varietal.WineType.Url,
+                                    "Vineyard.Id": products[ii].Vineyard.Id,
+                                    "Vineyard.Name": products[ii].Vineyard.Name,
+                                    "Vineyard.Url": products[ii].Vineyard.Url,
+                                    "Vineyard.ImageUrl": products[ii].Vineyard.ImageUrl,
+                                    "Vineyard.GeoLocation.Latitude": products[ii].Vineyard.GeoLocation.Latitude,
+                                    "Vineyard.GeoLocation.Longitude": products[ii].Vineyard.GeoLocation.Longitude,
+                                    "Vineyard.GeoLocation.Url": products[ii].Vineyard.GeoLocation.Url,
+                                    "Vintage": products[ii].Vintage,
+                                    "Community.Reviews.HighestScore": products[ii].Community.Reviews.HighestScore,
+                                    "Community.Reviews.Url": products[ii].Community.Reviews.Url,
+                                    "Community.Url": products[ii].Community.Url,
+                                    "Description": products[ii].Description,
+                                    "GeoLocation.Latitude": products[ii].GeoLocation.Latitude,
+                                    "GeoLocation.Longitude": products[ii].GeoLocation.Longitude,
+                                    "GeoLocation.Url": products[ii].GeoLocation.Url,
+                                    "PriceMax": products[ii].PriceMax,
+                                    "PriceMin": products[ii].PriceMin,
+                                    "PriceRetail": products[ii].PriceRetail,
+                                    "Ratings.HighestScore": products[ii].Ratings.HighestScore,
+                                    "Retail": products[ii].Retail
+                                };
+                                toRet.push(entry);
+                            }
+                            lastRecordNumber = lastRecordNumber + toRet.length;
+                            // Call back to tableau with the table data and the new record number (this is stored as a string)
+                            tableau.dataCallback(toRet, lastRecordNumber.toString(), true);
+                        } else {
+                            tableau.abortWithError("No results found for ticker symbol: " + ticker);
+                        }
+                    },
+                    error: function(xhr, ajaxOptions, thrownError) {
+                        // add something to the log and return an empty set if there was problem with the connection
+                        tableau.log("connection error: " + xhr.responseText + "\n" + thrownError);
+                        tableau.abortWithError("error connecting to the yahoo stock data source");
+                    }
+                });
+            };
+
+            tableau.registerConnector(myConnector);
+
+            //
+            // Setup connector UI
+            //
+            $(document).ready(function() {
+                $("#submitButton").click(function() { // This event fires when a button is clicked
+                    tableau.connectionName = 'Wines Data From Wines.com'; // name the data source. This will be the data source name in Tableau
+                    tableau.submit();
+                });
+            });
+
+        })();
+    </script>
+</head>
+
+<body>
+    <button type="button" id="submitButton">Get Wines Data</button>
+</body>
+
+</html>
